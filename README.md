@@ -4,7 +4,7 @@ A simple Python project for managing PDF margins.
 
 ## Setup Instructions
 
-### Clone the repository:
+### Clone the repository and navigate:
 ```bash
 git clone git@github.com:SinaNajafi1/PDFmargins.git
 ```
