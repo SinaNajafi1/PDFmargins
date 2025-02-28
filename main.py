@@ -4,9 +4,9 @@ import os
 
 def cm_to_pts(cm):
     """
-    PDFs use points (pts) instead of cm or inches. 1 cm ≈ 28.35 points
+    PDFs use points (pts) instead of cm or inches. 1 cm ≈ 28.346 points.
     """
-    return cm * 28.35
+    return cm * 28.346
 
 
 pdf_file = input("Enter the path to the PDF file: ")
@@ -20,6 +20,38 @@ bottom_margin_pts = cm_to_pts(bottom_margin_cm)
 left_margin_pts = cm_to_pts(left_margin_cm)
 right_margin_pts = cm_to_pts(right_margin_cm)
 
+tolerance_other = cm_to_pts(0.2) # 0.2 cm error allowance.
+tolerance_bottom = cm_to_pts(0.2)
+
+
+def get_content_box(page):
+    """
+    To get the bounding box of all visible content on the page, excluding page numbers.
+    """
+    text_blocks = page.get_text("words")
+    text_bbox = fitz.Rect()
+
+    for block in text_blocks:
+        x0, y0, x1, y1, text = block[:5]
+
+        text_bbox |= fitz.Rect(x0, y0, x1, y1)
+
+    image_bbox = fitz.Rect()
+    for img in page.get_images(full=True):
+        for rect in page.get_image_rects(img[0]):
+            image_bbox |= rect # Union of all image rectangles.
+
+    vector_bbox = fitz.Rect()
+    for draw in page.get_drawings():
+        vector_bbox |= draw["rect"] # bounding the vector graphics.
+
+    full_bbox = text_bbox | image_bbox | vector_bbox # Union of text and image bounding boxes and vector graphics so paragraphs and images won't be considered as separated boxes.
+
+    if full_bbox.is_empty or full_bbox.get_area() < cm_to_pts(0.5) ** 2:
+        return None # No content detection will return None
+
+    return full_bbox
+
 
 def check_pdf_margins(pdf_path, output_path):
     doc = fitz.open(pdf_path)
@@ -27,36 +59,46 @@ def check_pdf_margins(pdf_path, output_path):
 
     for page_number in range(len(doc)):
         page = doc[page_number]
-        page_rect = page.rect  # Each page dimension (width and height).
-        text_blocks = page.get_text("blocks")  # Get text bounding boxes.
-        incorrect_found = False  # Will be used to mark the incorrect pages.
+        page_rect = page.rect # Each page dimension (width and height).
+        content_bbox = get_content_box(page)
 
-        for block in text_blocks:
-            x0, y0, x1, y1, _, _ = block
-            """
-            x0 the starting horizontal position of the text block (from the left).
-            y0 the starting vertical position of the text block (from the top).
-            x1 the ending horizontal position of the text block (from the left).
-            y1 the ending vertical position of the text block (from the top).
-            """
-            if (x0 < left_margin_pts or
-                y0 < top_margin_pts or
-                (page_rect.width - x1) < right_margin_pts or
-                (page_rect.height - y1) < bottom_margin_pts):
+        if content_bbox is None:
+            continue # Skip the page with no content.
 
-                incorrect_found = True
+        # These are actual margins based on empty space that will be computed according to text box and below we compare with margins user gave as input.
+        # The drawn borders actually represent the border sides, from where we calculate the current margin.
+        actual_left_margin = content_bbox.x0
+        actual_top_margin = content_bbox.y0
+        actual_right_margin = page_rect.width - content_bbox.x1
+        actual_bottom_margin = page_rect.height - content_bbox.y1
 
-                rect = fitz.Rect(x0, y0, x1, y1)
-                page.insert_rect(rect, color=(1, 0, 0), width=2) # Draw a red border around the text box violating the margin rules.
+        left_ok = (left_margin_pts - tolerance_other) <= actual_left_margin <= (left_margin_pts + tolerance_other)
+        top_ok = (top_margin_pts - tolerance_other) <= actual_top_margin <= (top_margin_pts + tolerance_other)
+        right_ok = (right_margin_pts - tolerance_other) <= actual_right_margin <= (right_margin_pts + tolerance_other)
+        bottom_ok = (bottom_margin_pts - tolerance_bottom) <= actual_bottom_margin <= (bottom_margin_pts + tolerance_bottom)
 
-        if incorrect_found:
-            incorrect_pages.append(page_number + 1) # 1-based index.
+        incorrect_margins = [] # All the margins should be correct to not append the page and mark it as incorrect
+        if not left_ok:
+            incorrect_margins.append(f"Left ({actual_left_margin:.2f} pts)")
+        if not top_ok:
+            incorrect_margins.append(f"Top ({actual_top_margin:.2f} pts)")
+        if not right_ok:
+            incorrect_margins.append(f"Right ({actual_right_margin:.2f} pts)")
+        if not bottom_ok:
+            incorrect_margins.append(f"Bottom ({actual_bottom_margin:.2f} pts)")
+
+        if incorrect_margins:
+            incorrect_pages.append((page_number + 1, incorrect_margins)) # 1 based index for page number.
+
+            page.draw_rect(content_bbox, color=(1, 0, 0), width=2) # Draw a red border around the text box violating the margin rules.
 
     doc.save(output_path)
     doc.close()
 
     if incorrect_pages:
-        print(f"Margins incorrect on pages: {incorrect_pages}")
+        print("Margins incorrect on the following pages:")
+        for page, issues in incorrect_pages:
+            print(f"Page {page}: {', '.join(issues)}")
         print(f"Marked incorrect margins in the PDF and saved as: {output_path}")
     else:
         print("All pages have correct margins.")
