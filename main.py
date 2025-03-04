@@ -9,11 +9,11 @@ def cm_to_pts(cm):
     return cm * 28.346
 
 
-pdf_file = input("Enter the path to the PDF file: ")
-top_margin_cm = float(input("Enter the top margin (cm): "))
-bottom_margin_cm = float(input("Enter the bottom margin (cm): "))
-left_margin_cm = float(input("Enter the left margin (cm): "))
-right_margin_cm = float(input("Enter the right margin (cm): "))
+pdf_file = "examples/AI Disaster Response.pdf"
+top_margin_cm = 3
+bottom_margin_cm = 3
+left_margin_cm = 2.5
+right_margin_cm = 2.5
 
 top_margin_pts = cm_to_pts(top_margin_cm)
 bottom_margin_pts = cm_to_pts(bottom_margin_cm)
@@ -33,6 +33,12 @@ def get_content_box(page):
 
     for block in text_blocks:
         x0, y0, x1, y1, text = block[:5]
+        """
+        x0 the starting horizontal position of the text block (from the left).
+        y0 the starting vertical position of the text block (from the top).
+        x1 the ending horizontal position of the text block (from the left).
+        y1 the ending vertical position of the text block (from the top).
+        """
 
         text_bbox |= fitz.Rect(x0, y0, x1, y1)
 
@@ -72,25 +78,30 @@ def check_pdf_margins(pdf_path, output_path):
         actual_right_margin = page_rect.width - content_bbox.x1
         actual_bottom_margin = page_rect.height - content_bbox.y1
 
-        left_ok = (left_margin_pts - tolerance_other) <= actual_left_margin <= (left_margin_pts + tolerance_other)
-        top_ok = (top_margin_pts - tolerance_other) <= actual_top_margin <= (top_margin_pts + tolerance_other)
-        right_ok = (right_margin_pts - tolerance_other) <= actual_right_margin <= (right_margin_pts + tolerance_other)
-        bottom_ok = (bottom_margin_pts - tolerance_bottom) <= actual_bottom_margin <= (bottom_margin_pts + tolerance_bottom)
+        left_ok = abs(actual_left_margin - left_margin_pts) <= tolerance_other
+        top_ok = abs(actual_top_margin - top_margin_pts) <= tolerance_other
+        right_ok = abs(actual_right_margin - right_margin_pts) <= tolerance_other
+        bottom_ok = abs(actual_bottom_margin - bottom_margin_pts) <= tolerance_bottom
 
         incorrect_margins = [] # All the margins should be correct to not append the page and mark it as incorrect
         if not left_ok:
             incorrect_margins.append(f"Left ({actual_left_margin:.2f} pts)")
+            page.draw_line((content_bbox.x0, page_rect.y0), (content_bbox.x0, page_rect.y1), color=(1, 0, 0), width=2) # Draw a red line on the side of the text violating the margin rules.
         if not top_ok:
             incorrect_margins.append(f"Top ({actual_top_margin:.2f} pts)")
+            page.draw_line((page_rect.x0, content_bbox.y0), (page_rect.x1, content_bbox.y0), color=(1, 0, 0), width=2)
         if not right_ok:
             incorrect_margins.append(f"Right ({actual_right_margin:.2f} pts)")
+            page.draw_line((content_bbox.x1, page_rect.y0), (content_bbox.x1, page_rect.y1), color=(1, 0, 0), width=2)
         if not bottom_ok:
             incorrect_margins.append(f"Bottom ({actual_bottom_margin:.2f} pts)")
+            page.draw_line((page_rect.x0, content_bbox.y1), (page_rect.x1, content_bbox.y1), color=(1, 0, 0), width=2)
 
         if incorrect_margins:
             incorrect_pages.append((page_number + 1, incorrect_margins)) # 1 based index for page number.
 
-            page.draw_rect(content_bbox, color=(1, 0, 0), width=2) # Draw a red border around the text box violating the margin rules.
+            # page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
+            # Draw a red border around the text box violating the margin rules (For debug, where we draw the bounding box that margins are measured from on all four sides).
 
     doc.save(output_path)
     doc.close()
