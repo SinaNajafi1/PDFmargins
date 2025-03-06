@@ -1,6 +1,7 @@
 import fitz
 import os
 
+
 def cm_to_pts(cm):
     """
     PDFs use points (pts) instead of cm or inches. 1 cm ≈ 28.346 points.
@@ -89,21 +90,21 @@ def check_pdf_margins(pdf_path, output_path):
         incorrect_margins = [] # All the margins should be correct to not append the page and mark it as incorrect
         if not left_ok:
             incorrect_margins.append(f"Left ({actual_left_margin:.2f} pts)")
-            #page.draw_line((content_bbox.x0, page_rect.y0), (content_bbox.x0, page_rect.y1), color=(1, 0, 0), width=2) # Draw a red line on the side of the text violating the margin rules.
+            page.draw_line((content_bbox.x0, page_rect.y0), (content_bbox.x0, page_rect.y1), color=(1, 0, 0), width=2) # Draw a red line on the side of the text violating the margin rules.
         if not top_ok:
             incorrect_margins.append(f"Top ({actual_top_margin:.2f} pts)")
-            #page.draw_line((page_rect.x0, content_bbox.y0), (page_rect.x1, content_bbox.y0), color=(1, 0, 0), width=2)
+            page.draw_line((page_rect.x0, content_bbox.y0), (page_rect.x1, content_bbox.y0), color=(1, 0, 0), width=2)
         if not right_ok:
             incorrect_margins.append(f"Right ({actual_right_margin:.2f} pts)")
-            #page.draw_line((content_bbox.x1, page_rect.y0), (content_bbox.x1, page_rect.y1), color=(1, 0, 0), width=2)
+            page.draw_line((content_bbox.x1, page_rect.y0), (content_bbox.x1, page_rect.y1), color=(1, 0, 0), width=2)
         if not bottom_ok:
             incorrect_margins.append(f"Bottom ({actual_bottom_margin:.2f} pts)")
-            #page.draw_line((page_rect.x0, content_bbox.y1), (page_rect.x1, content_bbox.y1), color=(1, 0, 0), width=2)
+            page.draw_line((page_rect.x0, content_bbox.y1), (page_rect.x1, content_bbox.y1), color=(1, 0, 0), width=2)
 
         if incorrect_margins:
             incorrect_pages.append((page_number + 1, incorrect_margins)) # 1 based index for page number.
 
-            page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
+            # page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
             # Draw a red border around the text box violating the margin rules (For debug, where we draw the bounding box that margins are measured from on all four sides).
 
         incorrect_images = [] # Image alignments.
@@ -124,7 +125,7 @@ def check_pdf_margins(pdf_path, output_path):
                     incorrect_images.append(rect)
 
         for img_rect in incorrect_images:
-            page.draw_rect(img_rect, color=(0, 0, 1), width=2) # Draw blue border around incorrectly aligned images.
+            page.draw_rect(img_rect, color=(1, 0, 0), width=2) # Draw blue border around incorrectly aligned images.
 
         if incorrect_images:
             incorrect_pages.append((page_number + 1, incorrect_margins + [f"Images not {image_alignment}-aligned."]))
