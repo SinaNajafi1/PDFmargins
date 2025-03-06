@@ -1,7 +1,6 @@
 import fitz
 import os
 
-
 def cm_to_pts(cm):
     """
     PDFs use points (pts) instead of cm or inches. 1 cm ≈ 28.346 points.
@@ -9,11 +8,12 @@ def cm_to_pts(cm):
     return cm * 28.346
 
 
-pdf_file = "/home/sinanajafi/Downloads/Japok.pdf"
+pdf_file = "examples/Japok.pdf"
 top_margin_cm = 3
 bottom_margin_cm = 3
 left_margin_cm = 2.5
 right_margin_cm = 2.5
+image_alignment = "left"
 
 top_margin_pts = cm_to_pts(top_margin_cm)
 bottom_margin_pts = cm_to_pts(bottom_margin_cm)
@@ -23,7 +23,6 @@ right_margin_pts = cm_to_pts(right_margin_cm)
 tolerance_other = cm_to_pts(0.2) # 0.2 cm error allowance.
 tolerance_bottom = cm_to_pts(0.2)
 
-image_alignment = "left"
 
 def get_content_box(page):
     """
@@ -107,7 +106,7 @@ def check_pdf_margins(pdf_path, output_path):
             page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
             # Draw a red border around the text box violating the margin rules (For debug, where we draw the bounding box that margins are measured from on all four sides).
 
-        incorrect_images = [] # Image allignments.
+        incorrect_images = [] # Image alignments.
         for rect in image_positions:
             img_x_center = (rect.x0 + rect.x1) / 2  # Find the center of the image.
 
@@ -124,7 +123,6 @@ def check_pdf_margins(pdf_path, output_path):
                 if abs(img_x_center - page_center) > tolerance_other:  # Check if centered.
                     incorrect_images.append(rect)
 
-
         for img_rect in incorrect_images:
             page.draw_rect(img_rect, color=(0, 0, 1), width=2) # Draw blue border around incorrectly aligned images.
 
@@ -135,7 +133,7 @@ def check_pdf_margins(pdf_path, output_path):
     doc.close()
 
     if incorrect_pages:
-        print("Margins incorrect on the following pages:")
+        print("Margin or alignment incorrect on the following pages:")
         for page, issues in incorrect_pages:
             print(f"Page {page}: {', '.join(issues)}")
         print(f"Marked incorrect margins in the PDF and saved as: {output_path}")
