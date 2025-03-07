@@ -7,6 +7,7 @@ def cm_to_pts(cm):
     """
     return cm * 28.346
 
+
 def get_content_box(page):
     """
     To get the bounding box of all visible content on the page, excluding page numbers.
