@@ -1,6 +1,7 @@
 import fitz
 import os
 
+
 def cm_to_pts(cm):
     """
     PDFs use points (pts) instead of cm or inches. 1 cm ≈ 28.346 points.
@@ -84,26 +85,26 @@ def check_pdf_margins(pdf_path, output_path):
         left_ok = abs(actual_left_margin - left_margin_pts) <= tolerance_other
         top_ok = abs(actual_top_margin - top_margin_pts) <= tolerance_other
         right_ok = abs(actual_right_margin - right_margin_pts) <= tolerance_other
-        bottom_ok = abs(actual_bottom_margin - bottom_margin_pts) <= tolerance_bottom
+        bottom_ok = actual_bottom_margin >= bottom_margin_pts - tolerance_bottom
 
         incorrect_margins = [] # All the margins should be correct to not append the page and mark it as incorrect
         if not left_ok:
             incorrect_margins.append(f"Left ({actual_left_margin:.2f} pts)")
-            #page.draw_line((content_bbox.x0, page_rect.y0), (content_bbox.x0, page_rect.y1), color=(1, 0, 0), width=2) # Draw a red line on the side of the text violating the margin rules.
+            page.draw_line((content_bbox.x0, page_rect.y0), (content_bbox.x0, page_rect.y1), color=(1, 0, 0), width=2) # Draw a red line on the side of the text violating the margin rules.
         if not top_ok:
             incorrect_margins.append(f"Top ({actual_top_margin:.2f} pts)")
-            #page.draw_line((page_rect.x0, content_bbox.y0), (page_rect.x1, content_bbox.y0), color=(1, 0, 0), width=2)
+            page.draw_line((page_rect.x0, content_bbox.y0), (page_rect.x1, content_bbox.y0), color=(1, 0, 0), width=2)
         if not right_ok:
             incorrect_margins.append(f"Right ({actual_right_margin:.2f} pts)")
-            #page.draw_line((content_bbox.x1, page_rect.y0), (content_bbox.x1, page_rect.y1), color=(1, 0, 0), width=2)
+            page.draw_line((content_bbox.x1, page_rect.y0), (content_bbox.x1, page_rect.y1), color=(1, 0, 0), width=2)
         if not bottom_ok:
             incorrect_margins.append(f"Bottom ({actual_bottom_margin:.2f} pts)")
-            #page.draw_line((page_rect.x0, content_bbox.y1), (page_rect.x1, content_bbox.y1), color=(1, 0, 0), width=2)
+            page.draw_line((page_rect.x0, content_bbox.y1), (page_rect.x1, content_bbox.y1), color=(1, 0, 0), width=2)
 
         if incorrect_margins:
             incorrect_pages.append((page_number + 1, incorrect_margins)) # 1 based index for page number.
 
-            page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
+            # page.draw_rect(content_bbox, color=(1, 0, 0), width=2)
             # Draw a red border around the text box violating the margin rules (For debug, where we draw the bounding box that margins are measured from on all four sides).
 
         incorrect_images = [] # Image alignments.
@@ -112,19 +113,22 @@ def check_pdf_margins(pdf_path, output_path):
 
             if image_alignment == "left":
                 if abs(rect.x0 - left_margin_pts) > tolerance_other:  # Check if left-aligned.
-                    incorrect_images.append(rect)
+                    incorrect_images.append((rect,"<-- Image Should be LEFT Aligned!"))
 
             elif image_alignment == "right":
                 if abs(page_rect.width - rect.x1 - right_margin_pts) > tolerance_other:  # Check if right-aligned.
-                    incorrect_images.append(rect)
+                    incorrect_images.append((rect, "Image Should be RIGHT Aligned! -->"))
 
             elif image_alignment == "center":
                 page_center = page_rect.width / 2
                 if abs(img_x_center - page_center) > tolerance_other:  # Check if centered.
-                    incorrect_images.append(rect)
+                    incorrect_images.append((rect, "Align Image to CENTER!"))
 
-        for img_rect in incorrect_images:
-            page.draw_rect(img_rect, color=(0, 0, 1), width=2) # Draw blue border around incorrectly aligned images.
+        for img_rect, message in incorrect_images:
+            page.draw_rect(img_rect, color=(1, 0, 0), width=2) # Draw red border around incorrectly aligned images.
+            text_x = img_rect.x0
+            text_y = img_rect.y0 - 10  # Place text just above the image
+            page.insert_text((text_x, text_y), message, fontsize=10, color=(1, 0, 0))
 
         if incorrect_images:
             incorrect_pages.append((page_number + 1, incorrect_margins + [f"Images not {image_alignment}-aligned."]))
