@@ -124,11 +124,16 @@ def check_pdf_margins(pdf_path, output_path):
                 if abs(img_x_center - page_center) > tolerance_other:  # Check if centered.
                     incorrect_images.append((rect, "Align Image to CENTER!"))
 
+<<<<<<< HEAD
         for img_rect, message in incorrect_images:
             page.draw_rect(img_rect, color=(1, 0, 0), width=2) # Draw red border around incorrectly aligned images.
             text_x = img_rect.x0
             text_y = img_rect.y0 - 10  # Place text just above the image
             page.insert_text((text_x, text_y), message, fontsize=10, color=(1, 0, 0))
+=======
+        for img_rect in incorrect_images:
+            page.draw_rect(img_rect, color=(1, 0, 0), width=2) # Draw blue border around incorrectly aligned images.
+>>>>>>> c3adfd26dd29c001711fd66dc9ebc49cc8c6970b
 
         if incorrect_images:
             incorrect_pages.append((page_number + 1, incorrect_margins + [f"Images not {image_alignment}-aligned."]))
