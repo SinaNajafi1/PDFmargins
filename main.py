@@ -4,7 +4,7 @@ from checker_tools.image_alignments import check_image_alignments
 from checker_tools.pdf_margins import check_pdf_margins
 
 
-pdf_file = "examples/Japok.pdf"
+pdf_file = "examples/AI Disaster Response.pdf"
 output_folder = "output" # To ensure that output folder exists if not create.
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)

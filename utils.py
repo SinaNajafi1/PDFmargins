@@ -12,8 +12,8 @@ def get_content_box(page):
     """
     To get the bounding box of all visible content on the page, excluding page numbers.
     """
-    text_blocks = page.get_text("words") # Getting blocks of contents separately (texts, headers, footers, paragraphs).
-    text_bbox = fitz.Rect()
+    text_blocks = page.get_text("blocks") # Getting blocks of contents separately (texts, headers, footers, paragraphs).
+    text_bboxes = []  # List to hold individual text blocks.
 
     for block in text_blocks:
         x0, y0, x1, y1, text = block[:5]
@@ -23,24 +23,35 @@ def get_content_box(page):
         x1 the ending horizontal position of the text block (from the left).
         y1 the ending vertical position of the text block (from the top).
         """
+        bbox = fitz.Rect(x0, y0, x1, y1)
+        text_bboxes.append((bbox, text.strip()))  # Store individual text block
 
-        text_bbox |= fitz.Rect(x0, y0, x1, y1)
-
-    image_bbox = fitz.Rect()
     image_positions = []
 
     for img in page.get_images(full=True):
         for rect in page.get_image_rects(img[0]):
-            image_bbox |= rect # Union of all image rectangles.
             image_positions.append(rect)
 
-    vector_bbox = fitz.Rect()
+    vector_bboxes = []
     for draw in page.get_drawings():
-        vector_bbox |= draw["rect"] # bounding the vector graphics.
+        vector_bboxes.append(draw["rect"]) # bounding the vector graphics.
 
-    full_bbox = text_bbox | image_bbox | vector_bbox # Union of text and image bounding boxes and vector graphics so paragraphs and images won't be considered as separated boxes.
+    return text_bboxes, image_positions, vector_bboxes
 
-    if full_bbox.is_empty or full_bbox.get_area() < cm_to_pts(0.5) ** 2:
-        return None # No content detection will return None
 
-    return full_bbox, image_positions
+def is_page_number(block, page_rect):
+    """
+    Detect if a text block is a page number.
+    Criteria:
+    - It contains only a number (e.g., '1', '10').
+    - It is near the bottom margin of the page.
+    """
+    bbox, text = block
+
+    if not text.strip().isdigit():
+        return False
+
+    # Define bottom threshold (anything that matches the criteria going x (here 4.0 cm) pts from bottom).
+    bottom_threshold = page_rect.height - cm_to_pts(4.0)
+
+    return bbox.y0 > bottom_threshold # Block is near the bottom.

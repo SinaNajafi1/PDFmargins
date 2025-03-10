@@ -17,27 +17,27 @@ def check_image_alignments(doc):
     for page_number in range(len(doc)):
         page = doc[page_number]
         page_rect = page.rect
-        content_bbox = get_content_box(page)
 
-        if content_bbox is None:
+        text_bboxes, image_positions, vector_bboxes = get_content_box(page)
+
+        if not image_positions:
             continue
 
-        content_bbox, image_positions = content_bbox
-        incorrect_images = [] # Image alignments.
+        incorrect_images = []
         for rect in image_positions:
-            img_x_center = (rect.x0 + rect.x1) / 2  # Find the center of the image.
+            img_x_center = (rect.x0 + rect.x1) / 2  # Find the center of the image
 
             if image_alignment == "left":
-                if abs(rect.x0 - left_margin_pts) > tolerance_other:  # Check if left-aligned.
+                if abs(rect.x0 - left_margin_pts) > tolerance_other:
                     incorrect_images.append((rect, "<-- Image Should be LEFT Aligned!"))
 
             elif image_alignment == "right":
-                if abs(page_rect.width - rect.x1 - right_margin_pts) > tolerance_other:  # Check if right-aligned.
+                if abs(page_rect.width - rect.x1 - right_margin_pts) > tolerance_other:
                     incorrect_images.append((rect, "Image Should be RIGHT Aligned! -->"))
 
             elif image_alignment == "center":
                 page_center = page_rect.width / 2
-                if abs(img_x_center - page_center) > tolerance_other:  # Check if centered.
+                if abs(img_x_center - page_center) > tolerance_other:
                     incorrect_images.append((rect, "Align Image to CENTER!"))
 
         for img_rect, message in incorrect_images:
