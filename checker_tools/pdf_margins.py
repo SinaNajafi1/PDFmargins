@@ -1,4 +1,4 @@
-from utils import get_content_box, cm_to_pts, is_page_number
+from utils import get_content_box, cm_to_pts, is_page_number, is_footer, is_header, is_empty_space
 
 top_margin_cm = 3.0
 bottom_margin_cm = 3.0
@@ -23,18 +23,23 @@ def check_pdf_margins(doc):
         page_rect = page.rect # Each page dimension (width and height).
         text_bboxes, image_positions, vector_bboxes = get_content_box(page) # Get content blocks (text, images, vectors).
 
-        page_number_blocks = [b for b in text_bboxes if is_page_number(b, page.rect)] # Identify the page number block using the helper function.
-        page_number_y0 = min((b[0].y0 for b in page_number_blocks), default=None) # This is y0 of the page number block which is used to also exclude any content block below page number.
+        text_bboxes = [b for b in text_bboxes if not is_empty_space(b, page.rect)]
+        text_bboxes = [b for b in text_bboxes if not is_footer(b, page.rect)] # Header and footer as text.
+        text_bboxes = [b for b in text_bboxes if not is_header(b, page.rect)]
+        text_bboxes = [b for b in text_bboxes if not is_page_number(b, page.rect)] # All thext boxes without page number block.
+        vector_bboxes = [v for v in vector_bboxes if not is_footer(v, page.rect)] # Excluding all the headers and footers as vector graphics (being close to top and bottom of the page are considered as header or footer).
+        vector_bboxes = [v for v in vector_bboxes if not is_header(v, page.rect)]
 
-        text_bboxes = [b for b in text_bboxes if not is_page_number(b, page.rect)] # All thext boxes without page number block also below exclude all blocks that are below the page number block.
+        # print(f"Text blocks after header/footer removal: {[b[1] for b in text_bboxes]}") # Debug only to see what are the contents of the blocks included in the bboxes after excluding headers/footers, etc.
 
-        if page_number_y0 is not None:
-            text_bboxes = [b for b in text_bboxes if b[0].y1 < page_number_y0]
-
-        all_content = [b[0] for b in text_bboxes] + image_positions + vector_bboxes # Now all the remaining blocks are unioned and then margins are calculated.
+        all_content = [b[0] for b in text_bboxes] + image_positions + [v for v in vector_bboxes] # Now all the remaining blocks are unioned and then margins are calculated.
 
         if not all_content:
-            continue # Skip the page with no content.
+            continue # Skip the page with no content. Below the skip also for pages with too little content (specified length).
+
+        total_text_length = sum(len(b[1].strip()) for b in text_bboxes)  # Sum lengths of text content.
+        if total_text_length < 5:
+            continue
 
         # Find page content edges to determine the whole text as one box whose borders are considered as actual margins.
         top_edge = min(block.y0 for block in all_content)
